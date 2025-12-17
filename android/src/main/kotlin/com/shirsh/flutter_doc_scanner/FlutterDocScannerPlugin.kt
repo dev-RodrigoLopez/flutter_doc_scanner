@@ -227,19 +227,26 @@ class FlutterDocScannerPlugin : MethodCallHandler, ActivityResultListener,
                     scanningResult?.getPdf()?.let { pdf ->
                         val pdfUri = pdf.getUri()
                         val pageCount = pdf.getPageCount()
-                        resultChannel.success(
+                        resultChannel?.success(
                             mapOf(
                                 "pdfUri" to pdfUri.toString(),
                                 "pageCount" to pageCount,
                             )
                         )
-                    } ?: resultChannel.error("SCAN_FAILED", "No PDF result returned", null)
+                        resultChannel = null
+                    } ?: run {
+                        resultChannel?.error("SCAN_FAILED", "No PDF result returned", null)
+                        resultChannel = null
+                    }
                 } else if (resultCode == Activity.RESULT_CANCELED) {
-                    resultChannel.success(null)
+                    resultChannel?.success(null)
+                    resultChannel = null
                 } else {
-                    resultChannel.error("SCAN_FAILED", "Failed to start scanning", null)
+                    resultChannel?.error("SCAN_FAILED", "Failed to start scanning", null)
+                    resultChannel = null
                 }
             }
+
             REQUEST_CODE_SCAN_IMAGES -> {
                 if (resultCode == Activity.RESULT_OK) {
                     val scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(data)
@@ -250,46 +257,58 @@ class FlutterDocScannerPlugin : MethodCallHandler, ActivityResultListener,
                                 "Count" to pages.size,
                             )
                         )
-                        resultChannel = null   // 🔑 LIMPIAR
+                        resultChannel = null
                     } ?: run {
                         resultChannel?.error("SCAN_FAILED", "No image results returned", null)
                         resultChannel = null
                     }
-                } else {
+                } else if (resultCode == Activity.RESULT_CANCELED) {
                     resultChannel?.success(null)
-                    resultChannel = null   // 🔑 LIMPIAR
+                    resultChannel = null
                 }
             }
+
             REQUEST_CODE_SCAN_PDF -> {
                 if (resultCode == Activity.RESULT_OK) {
                     val scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(data)
                     scanningResult?.getPdf()?.let { pdf ->
                         val pdfUri = pdf.getUri()
                         val pageCount = pdf.getPageCount()
-                        resultChannel.success(
+                        resultChannel?.success(
                             mapOf(
                                 "pdfUri" to pdfUri.toString(),
                                 "pageCount" to pageCount,
                             )
                         )
-                    } ?: resultChannel.error("SCAN_FAILED", "No PDF result returned", null)
+                        resultChannel = null
+                    } ?: run {
+                        resultChannel?.error("SCAN_FAILED", "No PDF result returned", null)
+                        resultChannel = null
+                    }
                 } else if (resultCode == Activity.RESULT_CANCELED) {
-                    resultChannel.success(null)
+                    resultChannel?.success(null)
+                    resultChannel = null
                 }
             }
+
             REQUEST_CODE_SCAN_URI -> {
                 if (resultCode == Activity.RESULT_OK) {
                     val scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(data)
                     scanningResult?.getPages()?.let { pages ->
-                        resultChannel.success(
+                        resultChannel?.success(
                             mapOf(
-                                "Uri" to pages.toString(),
+                                "Uri" to pages.map { it.imageUri.toString() },
                                 "Count" to pages.size,
                             )
                         )
-                    } ?: resultChannel.error("SCAN_FAILED", "No URI results returned", null)
+                        resultChannel = null
+                    } ?: run {
+                        resultChannel?.error("SCAN_FAILED", "No URI results returned", null)
+                        resultChannel = null
+                    }
                 } else if (resultCode == Activity.RESULT_CANCELED) {
-                    resultChannel.success(null)
+                    resultChannel?.success(null)
+                    resultChannel = null
                 }
             }
         }
