@@ -253,7 +253,7 @@ class FlutterDocScannerPlugin : MethodCallHandler, ActivityResultListener,
                     scanningResult?.getPages()?.let { pages ->
                         resultChannel?.success(
                             mapOf(
-                                "Uri" to pages.map { it.imageUri.toString() },
+                                "Uri" to pages.toString(),
                                 "Count" to pages.size,
                             )
                         )
