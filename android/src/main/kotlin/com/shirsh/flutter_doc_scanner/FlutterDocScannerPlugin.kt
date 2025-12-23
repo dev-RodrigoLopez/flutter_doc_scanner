@@ -15,6 +15,11 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
 
+import android.os.Build
+import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+
 class FlutterDocScannerPlugin :
     FlutterPlugin,
     MethodChannel.MethodCallHandler,
@@ -35,6 +40,9 @@ class FlutterDocScannerPlugin :
     private val REQUEST_CODE_SCAN_PDF = 216612
     private val REQUEST_CODE_SCAN_URI = 214412
 
+    private var legacyLauncher: ActivityResultLauncher<IntentSenderRequest>? = null
+
+
     // -------------------- Flutter --------------------
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -53,7 +61,49 @@ class FlutterDocScannerPlugin :
         activity = binding.activity
         activityBinding = binding
         binding.addActivityResultListener(this)
+
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+            val componentActivity = binding.activity as? ComponentActivity
+            componentActivity?.let {
+                legacyLauncher =
+                    it.registerForActivityResult(
+                        ActivityResultContracts.StartIntentSenderForResult()
+                    ) { result ->
+
+                        val flutterResult = pendingResult
+                        pendingResult = null
+
+                        if (flutterResult == null) return@registerForActivityResult
+
+                        if (result.resultCode == Activity.RESULT_CANCELED) {
+                            flutterResult.success(null)
+                            return@registerForActivityResult
+                        }
+
+                        if (result.resultCode != Activity.RESULT_OK) {
+                            flutterResult.error("SCAN_FAILED", "Scan failed", null)
+                            return@registerForActivityResult
+                        }
+
+                        val scanningResult =
+                            GmsDocumentScanningResult.fromActivityResultIntent(result.data)
+
+                        val pages = scanningResult?.pages
+                        if (pages != null) {
+                            flutterResult.success(
+                                mapOf(
+                                    "Uri" to pages.map { it.imageUri.toString() },
+                                    "Count" to pages.size
+                                )
+                            )
+                        } else {
+                            flutterResult.error("NO_IMAGES", "No images returned", null)
+                        }
+                    }
+            }
+        }
     }
+
 
     override fun onDetachedFromActivity() {
         activityBinding?.removeActivityResultListener(this)
@@ -132,24 +182,29 @@ class FlutterDocScannerPlugin :
         val task: Task<IntentSender>? =
             activity?.let { scanner.getStartScanIntent(it) }
 
-        task?.addOnSuccessListener { intentSender ->
+       task?.addOnSuccessListener { intentSender ->
             try {
-                startIntentSenderForResult(
-                    activity!!,
-                    intentSender,
-                    requestCode,
-                    null,
-                    0,
-                    0,
-                    0,
-                    null
-                )
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q && legacyLauncher != null) {
+                    legacyLauncher?.launch(
+                        IntentSenderRequest.Builder(intentSender).build()
+                    )
+                } else {
+                    startIntentSenderForResult(
+                        activity!!,
+                        intentSender,
+                        requestCode,
+                        null,
+                        0,
+                        0,
+                        0,
+                        null
+                    )
+                }
             } catch (e: Exception) {
                 fail("INTENT_ERROR", e.message)
             }
-        }?.addOnFailureListener {
-            fail("SCAN_START_FAILED", it.message)
         }
+
     }
 
     // -------------------- Result --------------------
