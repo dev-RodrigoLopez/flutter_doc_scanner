@@ -147,6 +147,7 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       ScaffoldMessenger.of(contextVoid).showSnackBar(
         const SnackBar(
+          backgroundColor: Colors.red,
           content: Text('Error al escanear documentos, reintente nuevamente (timeout)'),
           duration: Duration(seconds: 2),
         ),
@@ -162,6 +163,7 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       ScaffoldMessenger.of(contextVoid).showSnackBar(
         const SnackBar(
+          
           content: Text('No se detectaron imágenes, intente nuevamente'),
           duration: Duration(seconds: 2),
         ),
