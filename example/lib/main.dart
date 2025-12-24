@@ -18,6 +18,7 @@ import 'package:path_provider/path_provider.dart';
     @override
     Widget build(BuildContext context) {
       return MaterialApp(
+        debugShowCheckedModeBanner: false,
         home: HomePage(),
       );
     }
@@ -102,7 +103,15 @@ class _HomePageState extends State<HomePage> {
                     MaterialPageRoute(
                       builder: (_) => Scaffold(
                         appBar: AppBar(title: const Text('Imagen')),
-                        body: Center(child: Image.file(file)),
+                        body: InteractiveViewer(
+                          minScale: 0.5,
+                          maxScale: 5.0,
+                          panEnabled: true,
+                          scaleEnabled: true,
+                          child: Center(
+                            child: Image.file(file),
+                          ),
+                        ),
                       ),
                     ),
                   );
@@ -122,7 +131,20 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () {
                     _scanDocument( context);
                   },
-                  child: const Text("Scan Documents As Image"),
+                  child: const SizedBox(
+                      width: 200, 
+                      child:  Text("Scan Documents As Image")),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: ElevatedButton(
+                  onPressed: () {
+                    _deleteAllDocuments( context);
+                  },
+                  child: const SizedBox(
+                    width: 200,
+                    child:  Text("Delete all images")),
                 ),
               ),
 
@@ -161,23 +183,7 @@ class _HomePageState extends State<HomePage> {
         // Llamamos al scanner con timeout de 30s
       final result = await FlutterDocScanner()
           .getScannedDocumentAsImages(page: 3);
-          // .timeout(
-          //   const Duration(seconds: 60),
-          //   onTimeout: () => null,
-          // );
 
-      // 1️⃣ Si no hay resultado
-      // if (result == null) {
-      //   if (!mounted) return;
-      //   ScaffoldMessenger.of(contextVoid).showSnackBar(
-      //     const SnackBar(
-      //       backgroundColor: Colors.red,
-      //       content: Text('Error al escanear documentos, reintente nuevamente (timeout)'),
-      //       duration: Duration(seconds: 2),
-      //     ),
-      //   );
-      //   return;
-      // }
 
       // 2️⃣ Obtener URIs y cantidad de páginas de forma segura
       final uris = (result['Uri'] as List?) ?? [];
@@ -267,6 +273,41 @@ class _HomePageState extends State<HomePage> {
     final newPath = '${dir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
 
     return image.copy(newPath);
+  }
+
+    Future<void> _deleteAllDocuments(BuildContext context) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+
+      final files = dir
+          .listSync()
+          .whereType<File>()
+          .where((f) =>
+              f.path.endsWith('.jpg') || f.path.endsWith('.png'));
+
+      for (final file in files) {
+        await file.delete();
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _documents.clear();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Todos los documentos fueron eliminados'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al eliminar documentos: $e'),
+        ),
+      );
+    }
   }
 
 }
