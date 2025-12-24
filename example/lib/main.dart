@@ -40,6 +40,31 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadDocuments();
+
+    // Verificamos si la app se cerró por memoria en el escaneo anterior
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIfOperationFailed();
+    });
+
+  }
+
+  Future<void> _checkIfOperationFailed() async {
+    const channel = MethodChannel('flutter_doc_scanner');
+    try {
+      final bool failed = await channel.invokeMethod('checkMemoryCrash');
+      
+      if (failed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.orange,
+            content: Text('La memoria del equipo es insuficiente. El documento no pudo guardarse.'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Error de comunicación, ignorar
+    }
   }
 
   @override
